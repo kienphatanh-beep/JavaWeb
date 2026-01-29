@@ -1,33 +1,28 @@
-HELP.md
+### Build & Output ###
 target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+*.class
+*.log
+*.gz
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+### Maven Wrapper (PHẢI GIỮ LẠI ĐỂ DEPLOY) ###
+!.mvn/wrapper/maven-wrapper.jar
+!mvnw
+!mvnw.cmd
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+### IDEs (Của bạn đã có đủ, tôi tóm gọn lại) ###
+.idea/
 .vscode/
+*.iml
+*.iws
+*.ipr
+.settings/
+.classpath
+.project
+.factorypath
+
+### Secrets ###
+.env
+application-local.properties
+
+### OS ###
+.DS_Store
