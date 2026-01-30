@@ -24,11 +24,17 @@ public class JWTFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) 
             throws ServletException, IOException {
         
+        // 🔥 FIX: Bỏ qua kiểm tra JWT cho các yêu cầu OPTIONS (CORS Preflight)
+        // Yêu cầu này không chứa Token và cần được trả về 200 OK ngay lập tức.
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            return;
+        }
+        
         String authHeader = request.getHeader("Authorization");
         String uri = request.getRequestURI();
 
         // 1. Kiểm tra nếu không có Header Authorization hoặc không bắt đầu bằng Bearer
-        // Thì cho đi tiếp luôn (không chặn bằng sendError)
         if (authHeader == null || authHeader.isBlank() || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -39,10 +45,8 @@ public class JWTFilter extends OncePerRequestFilter {
         
         try {
             if (!jwt.isBlank()) {
-                // Lấy Email từ Token
                 String email = jwtUtil.validateTokenAndRetrieveSubject(jwt);
                 
-                // Nếu Token hợp lệ và chưa được xác thực trong Context
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     UserDetails userDetails = userDetailsServiceImpl.loadUserByUsername(email);
                     
@@ -55,13 +59,9 @@ public class JWTFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // 🔥 QUAN TRỌNG: Nếu Token lỗi (hết hạn, sai định dạng) trên trang Public, 
-            // chúng ta chỉ log lại chứ không dùng response.sendError ở đây.
-            // Để SecurityFilterChain ở dưới tự chặn nếu API đó yêu cầu Auth.
             System.err.println("--- [JWT FILTER ERROR] URI: " + uri + " | Lỗi: " + e.getMessage());
         }
 
-        // Luôn luôn gọi doFilter để request được tiếp tục đi vào chuỗi Filter tiếp theo
         filterChain.doFilter(request, response);
     }
 }

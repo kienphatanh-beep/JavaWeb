@@ -44,33 +44,27 @@ public class SecurityConfig {
             .httpBasic(AbstractHttpConfigurer::disable)
             
             .authorizeHttpRequests(requests -> requests
-                // 1. 🔥 CHO PHÉP SWAGGER & OPENAPI (Đầy đủ nhất cho Spring Boot 3)
-                .requestMatchers(
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/swagger-resources/**",
-                    "/webjars/**"
-                ).permitAll()
+                // 1. CHO PHÉP OPTIONS (PREFLIGHT) - Dứt điểm lỗi CORS 403
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 2. Các API Công khai
+                // 2. CHO PHÉP SWAGGER & OPENAPI
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/webjars/**").permitAll()
+
+                // 3. API Công khai & ChatAI
                 .requestMatchers("/api/login", "/api/register", "/api/public/**", "/error").permitAll()
+                .requestMatchers("/api/chat/**").permitAll() 
                 .requestMatchers(HttpMethod.GET, "/api/categories/**", "/api/products/**").permitAll()
                 
-                // 3. Phân quyền User (Giỏ hàng)
+                // 4. Phân quyền User & Admin
                 .requestMatchers("/api/carts/**").hasAuthority("USER")
-                
-                // 4. Phân quyền Admin
                 .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/categories/**", "/api/products/**").hasAuthority("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/categories/**", "/api/products/**").hasAuthority("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/categories/**", "/api/products/**").hasAuthority("ADMIN")
 
-                // 5. Mọi request còn lại phải xác thực
                 .anyRequest().authenticated()
             )
             
-            // Xử lý trả về 401 thay vì Redirect
             .exceptionHandling(handling -> handling.authenticationEntryPoint(
                 (request, response, authException) -> 
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Error: Unauthorized")
@@ -78,7 +72,6 @@ public class SecurityConfig {
             
             .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // Thêm Filter JWT vào trước UsernamePasswordAuthenticationFilter
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         http.authenticationProvider(daoAuthenticationProvider());
 
@@ -88,7 +81,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*")); 
+        
+        // 🔥 Cấu hình các cổng được phép truy cập
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "http://localhost:3000", 
+            "http://127.0.0.1:3000",
+            "http://localhost:8081", 
+            "http://127.0.0.1:8081"
+        )); 
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
         configuration.setExposedHeaders(Arrays.asList("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials", "Authorization", "X-Total-Count", "Content-Range"));

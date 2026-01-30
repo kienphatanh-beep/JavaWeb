@@ -163,39 +163,51 @@ public class UserServiceImpl implements UserService {
         return dto;
     }
 
-    @Override
-    public UserDTO updateUser(Long userId, UserDTO userDTO) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "userId", userId));
+   @Override
+public UserDTO updateUser(Long userId, UserDTO userDTO) {
+    User user = userRepo.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User", "userId", userId));
 
-        user.setFirstName(userDTO.getFirstName());
-        user.setLastName(userDTO.getLastName());
-        user.setMobileNumber(userDTO.getMobileNumber());
+    // Kiểm tra và chỉ cập nhật nếu có dữ liệu mới, tránh ghi đè null
+    if (userDTO.getFirstName() != null) user.setFirstName(userDTO.getFirstName());
+    if (userDTO.getLastName() != null) user.setLastName(userDTO.getLastName());
+    if (userDTO.getMobileNumber() != null) user.setMobileNumber(userDTO.getMobileNumber());
+    
+    // 🔥 FIX LỖI EMAIL NULL: Chỉ set email nếu DTO có gửi lên
+    if (userDTO.getEmail() != null && !userDTO.getEmail().isEmpty()) {
         user.setEmail(userDTO.getEmail());
-
-        if (userDTO.getImage() != null && !userDTO.getImage().isEmpty()) {
-            user.setImage(userDTO.getImage());
-        }
-        if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        }
-        if (userDTO.getAddress() != null) {
-            AddressDTO aDto = userDTO.getAddress();
-            Address address = addressRepo.findByCountryAndStateAndCityAndPincodeAndStreetAndBuildingName(
-                    aDto.getCountry(), aDto.getState(), aDto.getCity(), 
-                    aDto.getPincode(), aDto.getStreet(), aDto.getBuildingName());
-            if (address == null) {
-                address = new Address(null, aDto.getStreet(), aDto.getBuildingName(), 
-                        aDto.getCity(), aDto.getState(), aDto.getCountry(), aDto.getPincode(), null);
-                address = addressRepo.save(address);
-            }
-            user.setAddresses(List.of(address));
-        }
-        user = userRepo.save(user);
-        UserDTO responseDTO = modelMapper.map(user, UserDTO.class);
-        if (!user.getAddresses().isEmpty()) responseDTO.setAddress(modelMapper.map(user.getAddresses().get(0), AddressDTO.class));
-        return responseDTO;
     }
+
+    if (userDTO.getImage() != null && !userDTO.getImage().isEmpty()) {
+        user.setImage(userDTO.getImage());
+    }
+
+    // Xử lý mật khẩu riêng biệt để an toàn
+    if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
+        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+    }
+
+    // Xử lý địa chỉ
+    if (userDTO.getAddress() != null) {
+        AddressDTO aDto = userDTO.getAddress();
+        Address address = addressRepo.findByCountryAndStateAndCityAndPincodeAndStreetAndBuildingName(
+                aDto.getCountry(), aDto.getState(), aDto.getCity(), 
+                aDto.getPincode(), aDto.getStreet(), aDto.getBuildingName());
+        if (address == null) {
+            address = new Address(null, aDto.getStreet(), aDto.getBuildingName(), 
+                    aDto.getCity(), aDto.getState(), aDto.getCountry(), aDto.getPincode(), null);
+            address = addressRepo.save(address);
+        }
+        user.setAddresses(List.of(address));
+    }
+
+    user = userRepo.save(user);
+    UserDTO responseDTO = modelMapper.map(user, UserDTO.class);
+    if (!user.getAddresses().isEmpty()) {
+        responseDTO.setAddress(modelMapper.map(user.getAddresses().get(0), AddressDTO.class));
+    }
+    return responseDTO;
+}
 
     @Override
     public String deleteUser(Long userId) {
